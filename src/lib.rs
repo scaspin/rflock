@@ -61,7 +61,7 @@ impl RFLock {
     }
 
     pub fn write_unlock(&self) {
-        self.win.fetch_add(0xFFFFFF01, Ordering::Relaxed);
+        self.win.fetch_and(0xFFFFFF01, Ordering::Relaxed);
         self.wout.fetch_add(WINC, Ordering::Relaxed);
     }
 }
