@@ -7,10 +7,10 @@ fn main() {
     cc::Build::new()
         .file("rflock_c/lib.c")
         .include("rflock_c")
-        .compile("pft");
+        .compile("rflock");
 
     // Tell cargo to invalidate the built crate whenever the wrapper changes
-    println!("cargo:rerun-if-changed=rflock_c/pft.h");
+    println!("cargo:rerun-if-changed=rflock_c/rflock.h");
 
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
@@ -18,7 +18,7 @@ fn main() {
     let bindings = bindgen::Builder::default()
         // The input header we would like to generate
         // bindings for.
-        .header("rflock_c/pft.h")
+        .header("rflock_c/rflock.h")
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed.
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
