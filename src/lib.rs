@@ -66,35 +66,36 @@ impl RFLock {
     }
 }
 
-pub struct RFLock_C(pft_lock_struct);
+pub struct RFLock_C(rflock_struct);
 
 impl RFLock_C {
-    pub fn new() -> RFLock_C {
-        let mut lock = pft_lock_struct {
-            rin: 0,
-            rout: 0,
+    pub fn new(cores: i32) -> RFLock_C {
+        let mut lock = rflock_struct {
+            read_status: [0; 640],
             win: 0,
+            _buf1: [0;15],
             wout: 0,
+            _buf2: [0;15]
         };
         unsafe {
-            pft_lock_init(&mut lock);
+            rflock_init(&mut lock, cores);
         }
         RFLock_C(lock)
     }
 
-    pub fn read_lock(&self) {
+    pub fn read_lock(&self, core: i32) {
         unsafe {
             let const_ptr = self as *const RFLock_C;
             let mut_ptr = const_ptr as *mut RFLock_C;
-            pft_read_lock(&mut (*mut_ptr).0);
+            rflock_read_lock(&mut (*mut_ptr).0, core);
         }
     }
 
-    pub fn read_unlock(&self) {
+    pub fn read_unlock(&self, core: i32) {
         unsafe {
             let const_ptr = self as *const RFLock_C;
             let mut_ptr = const_ptr as *mut RFLock_C;
-            pft_read_unlock(&mut (*mut_ptr).0);
+            rflock_read_unlock(&mut (*mut_ptr).0, core);
         }
     }
 
@@ -102,7 +103,7 @@ impl RFLock_C {
         unsafe {
             let const_ptr = self as *const RFLock_C;
             let mut_ptr = const_ptr as *mut RFLock_C;
-            pft_write_lock(&mut (*mut_ptr).0);
+            rflock_write_lock(&mut (*mut_ptr).0);
         }
     }
 
@@ -110,7 +111,7 @@ impl RFLock_C {
         unsafe {
             let const_ptr = self as *const RFLock_C;
             let mut_ptr = const_ptr as *mut RFLock_C;
-            pft_write_unlock(&mut (*mut_ptr).0);
+            rflock_write_unlock(&mut (*mut_ptr).0);
         }
     }
 }

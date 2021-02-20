@@ -4,15 +4,15 @@
 #include "mem.h"
 
 // Read Fast Phase-Fair (ticket) Lock
-#define WINC 0x100
-#define WBITS 0x3
-#define PRES 0x2
-#define PHID 0x1
-#define PRESENT 0x3
-#define COMPLETED 0x4
+#define RF_WINC 0x100
+#define RF_WBITS 0x3
+#define RF_PRES 0x2
+#define RF_PHID 0x1
+#define RF_PRESENT 0x3
+#define RF_COMPLETED 0x4
 
 #define CORES_MAX  40
-int CORES;
+int RF_CORES;
 
 typedef struct rflock_struct {
     volatile unsigned read_status[CORES_MAX * 16];
@@ -28,12 +28,12 @@ typedef struct rflock_struct {
 /*
  *  Fast read Phase-Fair (ticket) Lock: initialize.
  */
-static inline void rflock_init(rflock_t *lock, int cores)
+void rflock_init(rflock_t *lock, int cores)
 {
-    CORES = cores;
-    for (int i=0; i < CORES; i++)
+    RF_CORES = cores;
+    for (int i=0; i < RF_CORES; i++)
     {
-	lock->read_status[i*16]= COMPLETED;
+	lock->read_status[i*16]= RF_COMPLETED;
     }
 
     lock->win = 0;
@@ -43,14 +43,14 @@ static inline void rflock_init(rflock_t *lock, int cores)
 /*
  *  Fast read Phase-Fair (ticket) Lock: read lock.
  */
-static inline void rflock_read_lock(rflock_t *lock, int core)
+void rflock_read_lock(rflock_t *lock, int core)
 {
     unsigned int w;
-    lock->read_status[core*16] = PRESENT;
-    w = lock->win & WBITS;
-    lock->read_status[core*16] = w & PHID;
+    lock->read_status[core*16] = RF_PRESENT;
+    w = lock->win & RF_WBITS;
+    lock->read_status[core*16] = w & RF_PHID;
 
-    while (((w & PRES) != 0) && (w == (lock->win & WBITS)))
+    while (((w & RF_PRES) != 0) && (w == (lock->win & RF_WBITS)))
     {
         cpu_relax();
     }
@@ -59,31 +59,31 @@ static inline void rflock_read_lock(rflock_t *lock, int core)
 /*
  *  Phase-Fair (ticket) Lock: read unlock.
  */
-static inline void rflock_read_unlock(rflock_t *lock, int core)
+void rflock_read_unlock(rflock_t *lock, int core)
 {
-    lock->read_status[core*16] = COMPLETED;
+    lock->read_status[core*16] = RF_COMPLETED;
 }
 
 /*
  *  Phase-Fair (ticket) Lock: write lock.
  */
-static inline void rflock_write_lock(rflock_t *lock)
+void rflock_write_lock(rflock_t *lock)
 {
-    unsigned int w, wticket, read_waiting;
+    unsigned int wticket, read_waiting;
 
     // Wait until it is my turn to write-lock the resource
-    wticket = __sync_fetch_and_add(&lock->win, WINC) & ~WBITS;
+    wticket = __sync_fetch_and_add(&lock->win, RF_WINC) & ~RF_WBITS;
     while (wticket != lock->wout)
     {
         cpu_relax();
     }
 
-    __sync_fetch_and_xor(&lock->win, WBITS);
-    read_waiting = lock->win & PHID;
+    __sync_fetch_and_xor(&lock->win, RF_WBITS);
+    read_waiting = lock->win & RF_PHID;
 
-    for (int i = 0; i<CORES ; i++)
+    for (int i = 0; i<RF_CORES ; i++)
     {
-	while ((lock->read_status[i*16] != read_waiting) && (lock->read_status[i*16] != COMPLETED))
+	while ((lock->read_status[i*16] != read_waiting) && (lock->read_status[i*16] != RF_COMPLETED))
 	{
 		cpu_relax();
 	}
@@ -93,10 +93,10 @@ static inline void rflock_write_lock(rflock_t *lock)
 /*
  *  Phase-Fair (ticket) Lock: write unlock.
  */
-static inline void rflock_write_unlock(rflock_t *lock)
+void rflock_write_unlock(rflock_t *lock)
 {
     __sync_fetch_and_and(&lock->win, 0xFFFFFF01);
-    lock->wout = lock->wout + WINC; // only one writer should ever be here
+    lock->wout = lock->wout + RF_WINC; // only one writer should ever be here
 }
 
 #endif 
